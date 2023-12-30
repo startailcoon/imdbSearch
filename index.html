@@ -42,6 +42,7 @@
 
             async function updateTableWithQuery(query) {
                 // This may take some time, so give the user some feedback
+                $("#queryErrors").css("display", "none");
                 $("#queryInfo").css("display", "block");
                 $("#queryInfo").html("Querying database...");
 
@@ -60,8 +61,10 @@
                 var timerDone = (new Date().getTime() - timerStart) / 1000;
 
                 // If the query failed, show the error message
-                if(contents[0].values.length == 0) {
+                if(contents.length == 0) {
+                    $("#queryErrors").css("display", "block");
                     $("#queryErrors").html("No results found.");
+                    $("#queryInfo").css("display", "none");
                     return;
                 }
 
@@ -138,10 +141,6 @@
                     }
                     if (attributes != "" && attributes != "%") {
                         queryArray.push("attributes LIKE '" + attributes + "'");
-                    }
-
-                    if (region == "" && region_select != "") {
-                        queryArray.push("region = '" + region_select + "'");
                     }
 
                     if(queryArray.length == 0) {
