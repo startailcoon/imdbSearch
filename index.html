@@ -1,0 +1,263 @@
+<html lang="en">
+    <head>
+        <title>IMDB Searcher</title>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="theme.default.min.css">
+        <script type="text/javascript" src="sql-wasm.js"></script>
+        <script type="text/javascript" src="jquery-3.6.4.min.js"></script>
+        <script type="text/javascript" src="jquery.tablesorter.min.js"></script>
+        <script type="text/javascript" src="jquery.tablesorter.widgets.min.js"></script>
+    </head>
+    <body>
+        <script type="text/javascript" src="script.js"></script>
+        <script type="text/javascript">
+            
+            getDatabases();
+            
+            // Connect to the database
+            async function dbConnect(filename) {
+                const sqlPromise = initSqlJs();
+                const dbPromise = fetch(filename).then(response => response.arrayBuffer()).catch(error => $("#queryErrors").html(error));
+                const [SQL, database] = await Promise.all([sqlPromise, dbPromise]);
+                const db = new SQL.Database(new Uint8Array(database));
+                return db;
+            }
+
+            async function dbQuery(dbFile, query) {
+                var db = await dbConnect(dbFile);
+                var contents = null;
+
+                return new Promise((resolve, reject) => {
+                    try {
+                        contents = db.exec(query);
+                        resolve(contents);
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            }
+
+            // https://stackoverflow.com/questions/17217736/while-loop-with-promises
+
+            async function updateTableWithQuery(query) {
+                // This may take some time, so give the user some feedback
+                $("#queryInfo").css("display", "block");
+                $("#queryInfo").html("Querying database...");
+
+                var waitForQuery = setInterval(function() {
+                    $("#queryInfo").append(".");
+                }, 1000);
+
+                var timerStart = new Date().getTime();
+
+                var selectedDatabase = $("#database").val();
+
+                var contents = await dbQuery("databases/" + selectedDatabase, query);
+
+                clearInterval(waitForQuery);
+
+                var timerDone = (new Date().getTime() - timerStart) / 1000;
+
+                // If the query failed, show the error message
+                if(contents[0].values.length == 0) {
+                    $("#queryErrors").html("No results found.");
+                    return;
+                }
+
+
+                // If the query succeeded, show the number of results
+
+                $("#queryInfo").append("...done in " + timerDone + " seconds. Found " + contents[0].values.length + " results<br />Rendering table...");
+
+                var timerStart = new Date().getTime();
+
+                var results = contents[0].values;
+                var html = "";
+
+                results.forEach(result => {
+                    html += "<tr>";
+                    var columnId = 0;
+                    result.forEach(value => {
+                        columnId++;
+
+                        if (columnId == 1) {
+
+                            function zeroPad(num) {
+                                return num.toString().padStart(7, "0");
+                            }
+
+                            var paddedNum = zeroPad(value);
+
+                            html += "<td><a href='https://www.imdb.com/title/tt" + paddedNum + "' target='_blank'>" + paddedNum + "</a></td>";
+                            return;
+                        }
+
+                        html += "<td>" + value + "</td>";
+                    });
+                    html += "</tr>";
+                });
+
+                // Set a small timeout to allow the user to see the query info before the table is updated
+                setTimeout(function() {
+                    $("#resultsTable tbody").html(html);
+                    $("#resultsTable").trigger("update");
+                    
+                    var timerDone = (new Date().getTime() - timerStart) / 1000;
+
+                    $("#queryInfo").append("done in " + timerDone + " seconds");
+                }, 500);
+            }
+
+            // Make the form querable by the user
+            // witout reloading the page
+            $(function() {
+                $("#myForm").submit(function(e) {
+                    $("#queryErrors").css("display", "none");
+                    $("#resultsTable tbody").html("");
+                    
+                    e.preventDefault();
+                    var date = $("#date").val();
+                    var region = $("#region").val();
+                    var festival = $("#festival").val();
+                    var attributes = $("#attributes").val();
+
+                    var region_select = $("#region_select").val();
+
+                    var query = "SELECT * FROM items WHERE ";
+                    var queryArray = [];
+
+                    if (date != "" && date != "%") {
+                        queryArray.push("date LIKE '" + date + "'");
+                    }
+                    if (region != "" && region != "%") {
+                        queryArray.push("region LIKE '" + region + "'");
+                    }
+                    if (festival != "" && festival != "%") {
+                        queryArray.push("festival LIKE '" + festival + "'");
+                    }
+                    if (attributes != "" && attributes != "%") {
+                        queryArray.push("attributes LIKE '" + attributes + "'");
+                    }
+
+                    if (region == "" && region_select != "") {
+                        queryArray.push("region = '" + region_select + "'");
+                    }
+
+                    if(queryArray.length == 0) {
+                        $("#queryErrors").css("display", "block");
+                        $("#queryErrors").html("No search parameters entered.");
+                        return;
+                    }
+
+                    query += queryArray.join(" AND ");
+
+                    updateTableWithQuery(query);
+                });
+
+            });
+
+            async function getDatabases() {
+                // Get all sqlite files in folder
+                $.ajax({
+                    url: "./getDatabases.php",
+                    success: function(result) {
+                        var databases = JSON.parse(result);
+                        var html = "";
+
+                        var c = 0;
+                        databases.forEach(database => {
+                            if(c == 0) {
+                                html += "<option value='" + database + "' selected>" + database + "</option>";
+                                c++;
+                                return;
+                            }
+
+                            html += "<option value='" + database + "'>" + database + "</option>";
+                        });
+
+                        $("#database").html(html);
+                    }
+                });
+            }
+
+            $(function() {
+                $("#resultsTable").tablesorter({});
+
+
+            });
+
+        </script>
+        <div>
+            <form id="myForm">
+                Fyll i ett värde i ett eller fler fält att söka efter, använd % som wildcard.<br />
+                Exempel: %2021%<br />
+                <br />
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Region</th>
+                            <th>Festival</th>
+                            <th>Attributes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <input type="text" size="10" id="date" placeholder="Date" />
+                            </td>
+                            <td>
+                                <input type="text" size="10" id="region" placeholder="Region" /><br />
+                            </td>
+                            <td>
+                                <input type="text" size="10" id="festival" placeholder="Festival" />
+                            </td>
+                            <td>
+                                <input type="text" size="10" id="attributes" placeholder="Attributes" />
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>
+                                <input type="submit" name="submit" id="submit"/>
+                            </td>
+                            <td colspan="3">
+                                Database to use: 
+                                <select id="database"></select>
+                            </td>
+                        </tr>
+                    </tfoot>                    
+                    
+                </table>
+            </form>
+        </div>
+
+        <div id="queryErrors" style="display: none; padding: 2px; border:1px solid black; background-color: lightcoral;"></div>
+        <div id="queryInfo" style="display: none; padding: 2px; border:1px solid black; background-color: lightgreen;"></div>
+        <div id="results">
+            <table id="resultsTable" class="tablesorter">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Ordering</th>
+                        <th>Date</th>
+                        <th>Region</th>
+                        <th>Premiere</th>
+                        <th>Wide</th>
+                        <th>Premiere Type</th>
+                        <th>Festival</th>
+                        <th>Attributes</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                </tbody>
+            </table>
+        </div>
+
+
+
+    </body>
+</html>
