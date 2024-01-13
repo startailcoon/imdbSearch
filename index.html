@@ -14,10 +14,10 @@
     <body>
         <script type="text/javascript" src="script.js"></script>
         <script type="text/javascript">
-            $(function() {
-                $( "#dateFrom" ).datepicker();
-                $( "#dateTo" ).datepicker();
-            });
+            // $(function() {
+            //     $( "#dateFrom" ).datepicker();
+            //     $( "#dateTo" ).datepicker();
+            // });
 
             getDatabases();
             
@@ -203,13 +203,13 @@
         <div>
             <form id="myForm">
                 Fyll i ett värde i ett eller fler fält att söka efter, använd % som wildcard.<br />
-                Exempel: %2021%<br />
+                Exempel: %2021-01%<br />
                 <br />
                 <table>
                     <thead>
                         <tr>
-                            <th>Date From</th>
-                            <th>Date To</th>
+                            <th>Datum från</th>
+                            <th>Datum till</th>
                             <th>Region</th>
                             <th>Festival</th>
                             <th>Attributes</th>
@@ -218,10 +218,10 @@
                     <tbody>
                         <tr>
                             <td>
-                                <input type="text" size="10" id="dateFrom" placeholder="DateFrom" />
+                                <input type="text" size="10" id="dateFrom" placeholder="2000-01-01" />
                             </td>
                             <td>
-                                <input type="text" size="10" id="dateTo" placeholder="DateTo" />
+                                <input type="text" size="10" id="dateTo" placeholder="2000-12-31" />
                             </td>
                             <td>
                                 <input type="text" size="10" id="region" placeholder="Region" /><br />
