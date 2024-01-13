@@ -9,11 +9,15 @@ class DBSQLite extends SQLite3 {
     }
 }
 
-$db = new DBSQLite('231202.sqlite3');
+$db = new DBSQLite('240104.sqlite3');
 $db->busyTimeout(5000);
+$stmt = $db->prepare('CREATE TABLE IF NOT EXISTS "items" ("id" INTEGER, "ordering" INTEGER, date TEXT, region TEXT, premiere INTEGER, wide INTEGER, "premiere_type" TEXT, festival TEXT, attributes TEXT)');
+$stmt->execute();
 
 // Read source file
-$handle = fopen("23-12-02data.tsv", "r");
+$handle = fopen("240104.tsv", "r");
+
+printf("Starting Import at %s\n", date("Y-m-d H:i:s"));
 
 if($handle) {
     fgets($handle);
@@ -79,6 +83,7 @@ if($handle) {
 
 fclose($handle);
 
+printf("Ending Importing at %s", date("Y-m-d H:i:s"));
 
 //11 190 080
 ?>

@@ -6,6 +6,7 @@ $databases = array();
 
 foreach($files as $file) {
     if(strpos($file, ".sqlite3") !== false) {
+	if(stristr($file, "journal")) continue;
         $databases[] = $file;
     }
 }
