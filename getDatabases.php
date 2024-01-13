@@ -6,7 +6,10 @@ $databases = array();
 
 foreach($files as $file) {
     if(strpos($file, ".sqlite3") !== false) {
-	if(stristr($file, "journal")) continue;
+	    if(stristr($file, "journal")) continue;
+        if(stristr($file, "-shm")) continue;
+        if(stristr($file, "-wal")) continue;
+
         $databases[] = $file;
     }
 }

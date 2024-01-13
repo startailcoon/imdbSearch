@@ -8,11 +8,17 @@
         <script type="text/javascript" src="jquery-3.6.4.min.js"></script>
         <script type="text/javascript" src="jquery.tablesorter.min.js"></script>
         <script type="text/javascript" src="jquery.tablesorter.widgets.min.js"></script>
+        <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
     </head>
     <body>
         <script type="text/javascript" src="script.js"></script>
         <script type="text/javascript">
-            
+            $(function() {
+                $( "#dateFrom" ).datepicker();
+                $( "#dateTo" ).datepicker();
+            });
+
             getDatabases();
             
             // Connect to the database
@@ -21,6 +27,7 @@
                 const dbPromise = fetch(filename).then(response => response.arrayBuffer()).catch(error => $("#queryErrors").html(error));
                 const [SQL, database] = await Promise.all([sqlPromise, dbPromise]);
                 const db = new SQL.Database(new Uint8Array(database));
+
                 return db;
             }
 
@@ -120,7 +127,8 @@
                     $("#resultsTable tbody").html("");
                     
                     e.preventDefault();
-                    var date = $("#date").val();
+                    var dateFrom = $("#dateFrom").val();
+                    var dateTo = $("#dateTo").val();
                     var region = $("#region").val();
                     var festival = $("#festival").val();
                     var attributes = $("#attributes").val();
@@ -130,9 +138,14 @@
                     var query = "SELECT * FROM items WHERE ";
                     var queryArray = [];
 
-                    if (date != "" && date != "%") {
-                        queryArray.push("date LIKE '" + date + "'");
+                    if (dateFrom != "" && dateFrom != "%" && dateTo != "" && dateTo != "%") {
+                        if($("#date_invert").is(":checked")) {
+                            queryArray.push("date NOT BETWEEN '" + dateFrom + "' AND '" + dateTo + "'");
+                        } else {
+                            queryArray.push("date BETWEEN '" + dateFrom + "' AND '" + dateTo + "'");
+                        }
                     }
+
                     if (region != "" && region != "%") {
                         queryArray.push("region LIKE '" + region + "'");
                     }
@@ -195,7 +208,8 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Date</th>
+                            <th>Date From</th>
+                            <th>Date To</th>
                             <th>Region</th>
                             <th>Festival</th>
                             <th>Attributes</th>
@@ -204,7 +218,10 @@
                     <tbody>
                         <tr>
                             <td>
-                                <input type="text" size="10" id="date" placeholder="Date" />
+                                <input type="text" size="10" id="dateFrom" placeholder="DateFrom" />
+                            </td>
+                            <td>
+                                <input type="text" size="10" id="dateTo" placeholder="DateTo" />
                             </td>
                             <td>
                                 <input type="text" size="10" id="region" placeholder="Region" /><br />
@@ -219,12 +236,15 @@
                     </tbody>
                     <tfoot>
                         <tr>
+                            <td colspan="2">
+                                Datum ej mellan:
+                                <input type="checkbox" id="date_invert" name="date_invert" value="1" />
+                            </td>
+                            <td colspan="2">
+                                Databas: <select id="database"></select>
+                            </td>
                             <td>
                                 <input type="submit" name="submit" id="submit"/>
-                            </td>
-                            <td colspan="3">
-                                Database to use: 
-                                <select id="database"></select>
                             </td>
                         </tr>
                     </tfoot>                    

@@ -67,14 +67,16 @@ if($handle) {
         $attributes = str_replace("\r\n","",$data[8]);
 
         // Overwrite previous outputline
-        printf(
-            "\033[999D Importing: %s%% - %s (%s%%) Stored - %s of %s lines processed",
-            round(($cLine / $cLines) * 100, 2),
-            number_format($cLineStored, 0, ',', ' '),
-            round(($cLineStored / $cLine) * 100, 2),
-            number_format($cLine, 0, ',', ' '),
-            number_format($cLines, 0, ',', ' '),
-        );
+        if($cLine % 1000 == 0) {
+            printf(
+                "\033[999D Importing: %s%% - %s (%s%%) Stored - %s of %s lines processed",
+                round(($cLine / $cLines) * 100, 2),
+                number_format($cLineStored, 0, ',', ' '),
+                round(($cLineStored / $cLine) * 100, 2),
+                number_format($cLine, 0, ',', ' '),
+                number_format($cLines, 0, ',', ' '),
+            );
+        }
 
         $cLine++;
 
