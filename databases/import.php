@@ -1,6 +1,7 @@
 <?php
-
+    
 class DBSQLite extends SQLite3 {
+
     function __construct($dbFile) {
         if(!file_exists($dbFile)) {
             throw new Exception("Database file '{$dbFile}' not found");
@@ -9,13 +10,31 @@ class DBSQLite extends SQLite3 {
     }
 }
 
-$db = new DBSQLite('240104.sqlite3');
+// Take input name from input
+if(!isset($argv[1])) {
+    throw new Exception("No input file given");
+}
+
+$filename = str_replace(".tsv", "", $argv[1]);
+
+// Remove old database
+if(file_exists($filename . ".sqlite3")) {
+    unlink($filename . ".sqlite3");    
+}
+
+// Create file
+$handle = fopen($filename . ".sqlite3", "w");
+fclose($handle);
+
+// Create database
+$db = new DBSQLite($filename . ".sqlite3");
 $db->busyTimeout(5000);
+$db->exec('PRAGMA journal_mode = wal;');
 $stmt = $db->prepare('CREATE TABLE IF NOT EXISTS "items" ("id" INTEGER, "ordering" INTEGER, date TEXT, region TEXT, premiere INTEGER, wide INTEGER, "premiere_type" TEXT, festival TEXT, attributes TEXT)');
 $stmt->execute();
 
 // Read source file
-$handle = fopen("240104.tsv", "r");
+$handle = fopen($filename . ".tsv", "r");
 
 printf("Starting Import at %s\n", date("Y-m-d H:i:s"));
 
@@ -59,11 +78,9 @@ if($handle) {
 
         $cLine++;
 
-        // Insert into database
         // Skip if festival is null
-        if($festival == "\N") {
-            continue;
-        }
+        // if($festival == "\N") { continue; }
+        if($region != "SE") { continue; }
 
         $cLineStored++;
 
