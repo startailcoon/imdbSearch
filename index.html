@@ -20,6 +20,8 @@
             // });
 
             getDatabases();
+
+            var csv = "";
             
             // Connect to the database
             async function dbConnect(filename) {
@@ -133,24 +135,22 @@
                 return query;
             }
 
-            function enableExport(result) {
-                $('#exportCSV').prop('disabled', false);
-                $("#exportCSV").click(function() {
-                    var csv = "ID,Ordering,Date,Region,Premiere,Wide,Premiere Type,Festival,Attributes\n";
+            function exportCSV() {
+                var hiddenElement = document.createElement("a");
+                hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURI("\uFEFF" + csv);
+                hiddenElement.target = "_blank";
+                hiddenElement.download = "imdb_search_export.csv";
+                hiddenElement.click();
+            }
 
-                    result[0].values.forEach(value => {
-                        csv += value.join(",");
-                    });
+            function createCSV(result) {
+                var csv = "ID,Ordering,Date,Region,Premiere,Wide,Premiere Type,Festival,Attributes\n";
 
-                    var universalBOM = "\uFEFF";
-
-                    var hiddenElement = document.createElement("a");
-                    hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURI(universalBOM + csv);
-                    hiddenElement.target = "_blank";
-                    hiddenElement.download = "imdb_search_export.csv";
-                    hiddenElement.click();
+                result[0].values.forEach(value => {
+                    csv += value.join(",");
                 });
 
+                return csv;
             }
 
             async function queryDatabase(query) {
@@ -201,9 +201,10 @@
                         // If the query succeeded, show the number of results
 
                         $("#queryInfo").append("...done in " + timerDone + " seconds. Found " + result[0].values.length + " results<br />Rendering table...");
+                        $('#exportCSV').prop('disabled', false);
 
                         updateTableWithQuery(result[0].values);
-                        enableExport(result);
+                        csv = createCSV(result);
                     });
                 });
 
@@ -294,7 +295,7 @@
         <div id="queryInfo" style="display: none; padding: 2px; border:1px solid black; background-color: lightgreen;"></div>
         <div id="results">
             <br />
-            <button id="exportCSV" disabled="disabled">Export to CSV</button>
+            <button id="exportCSV" disabled="disabled" onclick="exportCSV()">Export to CSV</button>
             <table id="resultsTable" class="tablesorter">
                 <thead>
                     <tr>
