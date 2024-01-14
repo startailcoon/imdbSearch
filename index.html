@@ -45,45 +45,10 @@
                 });
             }
 
-            // https://stackoverflow.com/questions/17217736/while-loop-with-promises
-
-            async function updateTableWithQuery(query) {
-                // This may take some time, so give the user some feedback
-                $("#queryErrors").css("display", "none");
-                $("#queryInfo").css("display", "block");
-                $("#queryInfo").html("Querying database...");
-
-                var waitForQuery = setInterval(function() {
-                    $("#queryInfo").append(".");
-                }, 1000);
-
-                var timerStart = new Date().getTime();
-
-                var selectedDatabase = $("#database").val();
-
-                var contents = await dbQuery("databases/" + selectedDatabase, query);
-
-                clearInterval(waitForQuery);
-
-                var timerDone = (new Date().getTime() - timerStart) / 1000;
-
-                // If the query failed, show the error message
-                if(contents.length == 0) {
-                    $("#queryErrors").css("display", "block");
-                    $("#queryErrors").html("No results found.");
-                    $("#queryInfo").css("display", "none");
-                    return;
-                }
-
-
-                // If the query succeeded, show the number of results
-
-                $("#queryInfo").append("...done in " + timerDone + " seconds. Found " + contents[0].values.length + " results<br />Rendering table...");
-
-                var timerStart = new Date().getTime();
-
-                var results = contents[0].values;
+            async function updateTableWithQuery(results) {
                 var html = "";
+
+                var timerStart = new Date().getTime();
 
                 results.forEach(result => {
                     html += "<tr>";
@@ -119,52 +84,125 @@
                 }, 500);
             }
 
+            function createQuery() {
+                var dateFrom = $("#dateFrom").val();
+                var dateTo = $("#dateTo").val();
+                var region = $("#region").val();
+                var festival = $("#festival").val();
+                var attributes = $("#attributes").val();
+
+                var region_select = $("#region_select").val();
+
+                var query = "SELECT * FROM items WHERE ";
+                var queryArray = [];
+
+                if (dateFrom != "" && dateFrom != "%" && dateTo != "" && dateTo != "%") {
+                    
+                    // If % is used, throw error
+                    if(dateFrom.includes("%") || dateTo.includes("%")) {
+                        $("#queryErrors").css("display", "block");
+                        $("#queryErrors").html("Date cannot contain %");
+                        return;
+                    }
+
+                    if($("#date_invert").is(":checked")) {
+                        queryArray.push("date NOT BETWEEN '" + dateFrom + "' AND '" + dateTo + "'");
+                    } else {
+                        queryArray.push("date BETWEEN '" + dateFrom + "' AND '" + dateTo + "'");
+                    }
+                }
+
+                if (region != "" && region != "%") {
+                    queryArray.push("region LIKE '" + region + "'");
+                }
+                if (festival != "" && festival != "%") {
+                    queryArray.push("festival LIKE '" + festival + "'");
+                }
+                if (attributes != "" && attributes != "%") {
+                    queryArray.push("attributes LIKE '" + attributes + "'");
+                }
+
+                if(queryArray.length == 0) {
+                    $("#queryErrors").css("display", "block");
+                    $("#queryErrors").html("No search parameters entered.");
+                    return;
+                }
+
+                query += queryArray.join(" AND ");
+
+                return query;
+            }
+
+            function enableExport(result) {
+                $('#exportCSV').prop('disabled', false);
+                $("#exportCSV").click(function() {
+                    var csv = "ID,Ordering,Date,Region,Premiere,Wide,Premiere Type,Festival,Attributes\n";
+
+                    result[0].values.forEach(value => {
+                        csv += value.join(",");
+                    });
+
+                    var hiddenElement = document.createElement("a");
+                    hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
+                    hiddenElement.target = "_blank";
+                    hiddenElement.download = "imdb_search_export.csv";
+                    hiddenElement.click();
+                });
+
+            }
+
+            async function queryDatabase(query) {
+                var selectedDatabase = $("#database").val();
+
+                var result = await dbQuery("databases/" + selectedDatabase, query);
+
+                return result;
+            }
+
             // Make the form querable by the user
             // witout reloading the page
             $(function() {
                 $("#myForm").submit(function(e) {
                     $("#queryErrors").css("display", "none");
                     $("#resultsTable tbody").html("");
-                    
+                    $('#exportCSV').prop('disabled', true);
+
                     e.preventDefault();
-                    var dateFrom = $("#dateFrom").val();
-                    var dateTo = $("#dateTo").val();
-                    var region = $("#region").val();
-                    var festival = $("#festival").val();
-                    var attributes = $("#attributes").val();
+                    
+                    var query = createQuery();
 
-                    var region_select = $("#region_select").val();
+                    // This may take some time, so give the user some feedback
+                    $("#queryErrors").css("display", "none");
+                    $("#queryInfo").css("display", "block");
+                    $("#queryInfo").html("Querying database...");
 
-                    var query = "SELECT * FROM items WHERE ";
-                    var queryArray = [];
+                    var waitForQuery = setInterval(function() {
+                        $("#queryInfo").append(".");
+                    }, 1000);
 
-                    if (dateFrom != "" && dateFrom != "%" && dateTo != "" && dateTo != "%") {
-                        if($("#date_invert").is(":checked")) {
-                            queryArray.push("date NOT BETWEEN '" + dateFrom + "' AND '" + dateTo + "'");
-                        } else {
-                            queryArray.push("date BETWEEN '" + dateFrom + "' AND '" + dateTo + "'");
+                    var timerStart = new Date().getTime();
+
+                    // Run the query, and wait for the results
+                    queryDatabase(query).then(result => {
+                        clearInterval(waitForQuery);
+
+                        var timerDone = (new Date().getTime() - timerStart) / 1000;
+
+                        // If the query failed, show the error message
+                        if(result.length == 0) {
+                            $("#queryErrors").css("display", "block");
+                            $("#queryErrors").html("No results found.");
+                            $("#queryInfo").css("display", "none");
+                            return;
                         }
-                    }
 
-                    if (region != "" && region != "%") {
-                        queryArray.push("region LIKE '" + region + "'");
-                    }
-                    if (festival != "" && festival != "%") {
-                        queryArray.push("festival LIKE '" + festival + "'");
-                    }
-                    if (attributes != "" && attributes != "%") {
-                        queryArray.push("attributes LIKE '" + attributes + "'");
-                    }
+                        // If the query succeeded, show the number of results
 
-                    if(queryArray.length == 0) {
-                        $("#queryErrors").css("display", "block");
-                        $("#queryErrors").html("No search parameters entered.");
-                        return;
-                    }
+                        $("#queryInfo").append("...done in " + timerDone + " seconds. Found " + result[0].values.length + " results<br />Rendering table...");
 
-                    query += queryArray.join(" AND ");
-
-                    updateTableWithQuery(query);
+                        updateTableWithQuery(result[0].values);
+                        enableExport(result);
+                    });
                 });
 
             });
@@ -195,8 +233,6 @@
 
             $(function() {
                 $("#resultsTable").tablesorter({});
-
-
             });
 
         </script>
@@ -248,7 +284,6 @@
                             </td>
                         </tr>
                     </tfoot>                    
-                    
                 </table>
             </form>
         </div>
@@ -256,6 +291,8 @@
         <div id="queryErrors" style="display: none; padding: 2px; border:1px solid black; background-color: lightcoral;"></div>
         <div id="queryInfo" style="display: none; padding: 2px; border:1px solid black; background-color: lightgreen;"></div>
         <div id="results">
+            <br />
+            <button id="exportCSV" disabled="disabled">Export to CSV</button>
             <table id="resultsTable" class="tablesorter">
                 <thead>
                     <tr>
@@ -270,9 +307,7 @@
                         <th>Attributes</th>
                     </tr>
                 </thead>
-                <tbody>
-
-                </tbody>
+                <tbody></tbody>
             </table>
         </div>
 
