@@ -17,11 +17,14 @@ async function dbConnect(filename) {
     const dbPromise = fetch(filename).then(response => response.arrayBuffer());
     const [SQL, database] = await Promise.all([sqlPromise, dbPromise]);
 
+    // Construct the new database before closing the old one: if this throws
+    // (e.g. a corrupt file), the still-valid cached connection is left alone
+    // instead of being closed out from under a subsequent retry.
+    const db = new SQL.Database(new Uint8Array(database));
+
     if (dbCache.db) {
         dbCache.db.close();
     }
-
-    const db = new SQL.Database(new Uint8Array(database));
 
     dbCache = { filename: filename, SQL: SQL, db: db };
 
