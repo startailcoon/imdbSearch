@@ -101,6 +101,7 @@ printf("\nCreating indexes at %s\n", date("Y-m-d H:i:s"));
 $db->exec('CREATE INDEX IF NOT EXISTS "idx_items_date" ON "items" ("date")');
 $db->exec('CREATE INDEX IF NOT EXISTS "idx_items_region" ON "items" ("region")');
 $db->exec('CREATE INDEX IF NOT EXISTS "idx_items_festival" ON "items" ("festival")');
+$db->exec('CREATE INDEX IF NOT EXISTS "idx_items_attributes" ON "items" ("attributes")');
 
 printf("Ending Importing at %s", date("Y-m-d H:i:s"));
 
