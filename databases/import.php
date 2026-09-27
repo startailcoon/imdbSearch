@@ -35,25 +35,19 @@ $stmt->execute();
 
 // Read source file
 $handle = fopen($filename . ".tsv", "r");
+$totalBytes = filesize($filename . ".tsv");
 
 printf("Starting Import at %s\n", date("Y-m-d H:i:s"));
 
 if($handle) {
     fgets($handle);
 
-    $cLines = 0;
-    // Count Lines
-    while(($line = fgets($handle)) !== false) {
-        $cLines++;
-    }
-
-    // Reset file pointer
-    fseek($handle, 1);
-
     $cLine = 1;
     $cLineStored = 1;
+    $bytesRead = 0;
 
     while(($line = fgets($handle)) !== false) {
+        $bytesRead += strlen($line);
         $data = explode("\t", $line);
 
         $id = str_replace("tt", "", $data[0]);
@@ -69,12 +63,11 @@ if($handle) {
         // Overwrite previous outputline
         if($cLine % 1000 == 0) {
             printf(
-                "\033[999D Importing: %s%% - %s (%s%%) Stored - %s of %s lines processed",
-                round(($cLine / $cLines) * 100, 2),
+                "\033[999D Importing: %s%% - %s (%s%%) Stored - %s lines processed",
+                round(($bytesRead / $totalBytes) * 100, 2),
                 number_format($cLineStored, 0, ',', ' '),
                 round(($cLineStored / $cLine) * 100, 2),
                 number_format($cLine, 0, ',', ' '),
-                number_format($cLines, 0, ',', ' '),
             );
         }
 
@@ -101,6 +94,13 @@ if($handle) {
 }
 
 fclose($handle);
+
+// Indexes are created after the bulk insert (cheaper than maintaining them
+// row-by-row) and cover the columns the frontend actually filters on.
+printf("\nCreating indexes at %s\n", date("Y-m-d H:i:s"));
+$db->exec('CREATE INDEX IF NOT EXISTS "idx_items_date" ON "items" ("date")');
+$db->exec('CREATE INDEX IF NOT EXISTS "idx_items_region" ON "items" ("region")');
+$db->exec('CREATE INDEX IF NOT EXISTS "idx_items_festival" ON "items" ("festival")');
 
 printf("Ending Importing at %s", date("Y-m-d H:i:s"));
 
