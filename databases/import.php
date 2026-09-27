@@ -44,7 +44,7 @@ if($handle) {
 
     $cLine = 1;
     $cLineStored = 1;
-    $bytesRead = strlen($header);
+    $bytesRead = $header === false ? 0 : strlen($header);
 
     while(($line = fgets($handle)) !== false) {
         $bytesRead += strlen($line);

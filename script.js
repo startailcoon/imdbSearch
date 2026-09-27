@@ -183,13 +183,15 @@ async function getDatabases() {
 
             var c = 0;
             databases.forEach(database => {
+                var escapedDatabase = escapeHtml(database);
+
                 if (c == 0) {
-                    html += "<option value='" + database + "' selected>" + database + "</option>";
+                    html += "<option value='" + escapedDatabase + "' selected>" + escapedDatabase + "</option>";
                     c++;
                     return;
                 }
 
-                html += "<option value='" + database + "'>" + database + "</option>";
+                html += "<option value='" + escapedDatabase + "'>" + escapedDatabase + "</option>";
             });
 
             $("#database").html(html);
@@ -245,10 +247,10 @@ $(function() {
 
             // If the query succeeded, show the number of results
             $("#queryInfo").append("...done in " + timerDone + " seconds. Found " + result[0].values.length + " results<br />Rendering table...");
-            $("#exportCSV").prop("disabled", false);
 
             await updateTableWithQuery(result[0].values);
             csv = createCSV(result);
+            $("#exportCSV").prop("disabled", false);
             $("#submit").prop("disabled", false);
         }).catch(error => {
             clearInterval(waitForQuery);
