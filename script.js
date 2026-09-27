@@ -46,7 +46,7 @@ function zeroPad(num) {
     return num.toString().padStart(7, "0");
 }
 
-async function updateTableWithQuery(results) {
+function updateTableWithQuery(results) {
     var html = "";
 
     var timerStart = new Date().getTime();
@@ -58,7 +58,7 @@ async function updateTableWithQuery(results) {
             columnId++;
 
             if (columnId == 1) {
-                var paddedNum = zeroPad(value);
+                var paddedNum = escapeHtml(zeroPad(value));
                 html += "<td><a href='https://www.imdb.com/title/tt" + paddedNum + "' target='_blank'>" + paddedNum + "</a></td>";
                 return;
             }
@@ -68,15 +68,21 @@ async function updateTableWithQuery(results) {
         html += "</tr>";
     });
 
-    // Set a small timeout to allow the user to see the query info before the table is updated
-    setTimeout(function() {
-        $("#resultsTable tbody").html(html);
-        $("#resultsTable").trigger("update");
+    // Set a small timeout to allow the user to see the query info before the table is
+    // updated. The returned promise resolves once that render has actually happened, so
+    // callers can wait for it instead of treating the query as done the moment results
+    // arrive (which would let a second search race this one's delayed render).
+    return new Promise(resolve => {
+        setTimeout(function() {
+            $("#resultsTable tbody").html(html);
+            $("#resultsTable").trigger("update");
 
-        var timerDone = (new Date().getTime() - timerStart) / 1000;
+            var timerDone = (new Date().getTime() - timerStart) / 1000;
 
-        $("#queryInfo").append("done in " + timerDone + " seconds");
-    }, 500);
+            $("#queryInfo").append("done in " + timerDone + " seconds");
+            resolve();
+        }, 500);
+    });
 }
 
 // Builds a parameterized query (rather than splicing user input into SQL text)
@@ -136,7 +142,7 @@ function createQuery() {
 
 function exportCSV() {
     var hiddenElement = document.createElement("a");
-    hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURI("﻿" + csv);
+    hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURIComponent("﻿" + csv);
     hiddenElement.target = "_blank";
     hiddenElement.download = "imdb_search_export.csv";
     hiddenElement.click();
@@ -144,7 +150,7 @@ function exportCSV() {
 
 function csvField(value) {
     var field = String(value == null ? "" : value);
-    if (/[",\n]/.test(field)) {
+    if (/[",\r\n]/.test(field)) {
         field = '"' + field.replace(/"/g, '""') + '"';
     }
     return field;
@@ -223,9 +229,8 @@ $(function() {
         var timerStart = new Date().getTime();
 
         // Run the query, and wait for the results
-        queryDatabase(query.sql, query.params).then(result => {
+        queryDatabase(query.sql, query.params).then(async result => {
             clearInterval(waitForQuery);
-            $("#submit").prop("disabled", false);
 
             var timerDone = (new Date().getTime() - timerStart) / 1000;
 
@@ -234,6 +239,7 @@ $(function() {
                 $("#queryErrors").css("display", "block");
                 $("#queryErrors").html("No results found.");
                 $("#queryInfo").css("display", "none");
+                $("#submit").prop("disabled", false);
                 return;
             }
 
@@ -241,8 +247,9 @@ $(function() {
             $("#queryInfo").append("...done in " + timerDone + " seconds. Found " + result[0].values.length + " results<br />Rendering table...");
             $("#exportCSV").prop("disabled", false);
 
-            updateTableWithQuery(result[0].values);
+            await updateTableWithQuery(result[0].values);
             csv = createCSV(result);
+            $("#submit").prop("disabled", false);
         }).catch(error => {
             clearInterval(waitForQuery);
             $("#submit").prop("disabled", false);

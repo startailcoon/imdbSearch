@@ -40,11 +40,11 @@ $totalBytes = filesize($filename . ".tsv");
 printf("Starting Import at %s\n", date("Y-m-d H:i:s"));
 
 if($handle) {
-    fgets($handle);
+    $header = fgets($handle);
 
     $cLine = 1;
     $cLineStored = 1;
-    $bytesRead = 0;
+    $bytesRead = strlen($header);
 
     while(($line = fgets($handle)) !== false) {
         $bytesRead += strlen($line);
